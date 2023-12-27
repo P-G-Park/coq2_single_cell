@@ -5,7 +5,7 @@ setwd('..')
 
 ####  Define QC parameters  #######
 
-Matrix_disease <- Read10X('./raw_data/81230608_hansuyoon')
+Matrix_disease <- Read10X('./raw_data/81230608')
 seurat_disease <- CreateSeuratObject(Matrix_han, min.cells = 3)
 seurat_disease$disease <- 'disease'
 seurat_disease$channel <- 'this_paper'
