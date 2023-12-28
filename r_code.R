@@ -1,12 +1,11 @@
 rm(list=ls())
-pacman::p_load(tidyverse, readxl, Seurat, data.table, ggsci, ggpubr, Matrix, harmony)
+pacman::p_load(tidyverse, readxl, Seurat, data.table, ggsci, ggpubr, Matrix, harmony, fgsea, msigdbr)
 
 setwd('..')
 
-####  Define QC parameters  #######
 
 Matrix_disease <- Read10X('./raw_data/81230608')
-seurat_disease <- CreateSeuratObject(Matrix_han, min.cells = 3)
+seurat_disease <- CreateSeuratObject(Matrix_disease, min.cells = 3)
 seurat_disease$disease <- 'disease'
 seurat_disease$channel <- 'this_paper'
 
@@ -31,11 +30,9 @@ all <- all %>%
 # save(all, file = './raw_data/all_v1.RData')
 
 
-##### 230905
-load('./raw_data/all_v1.RData')
+##### 
+# load('./raw_data/all_v1.RData')
 
-quick(all)
-quickdot(all, feat = Marker)
 all <-  all %>% RenameIdents(
   '0' = 'PT',
   '1' = 'Injured PT',
@@ -44,8 +41,8 @@ all <-  all %>% RenameIdents(
   '7' ='DCT',
   '2' = 'CD-P',
   '10' = 'CD-P',
-  '8' = 'CD-I',
-  '12' = 'IC',
+  '8' = 'IC-A',
+  '12' = 'IC-B',
   '9' = 'gEC',
   '3' = 'ptEC',
   '13' = 'Arterial EC',
@@ -92,8 +89,6 @@ for(i in levels(Idents(all))){
 degs %>% write.table("clipboard", sep = '\t') 
 
 
-
-require(writexl)
 DEGs <- list()
 for(i in levels(Idents(all))){
   subset_i <- subset(all, idents = i)
@@ -102,6 +97,7 @@ for(i in levels(Idents(all))){
     rownames_to_column('Gene')
   DEGs[[i]] <- DEGs_i
 }
+
 writexl::write_xlsx(DEGs, path = str_c('all_disease.xlsx'))
 
 cell.prop <- table(Idents(all), all$disease) %>% 
@@ -143,50 +139,50 @@ glycolysis <- c('ALDOA', 'BPGM', 'ENO1', 'ENO2', 'GAPDH', 'GPI', 'HK1', 'HK2',
 mt_fc <- FoldChange(all, ident.1 = 'disease', feat = mt, group.by = 'disease', subset.ident = 'PT')
 mt_fc <- mt_fc[0]
 for(i in levels(Idents(all))){
-  asdf <- FoldChange(all, ident.1 = 'disease', feat = mt, group.by = 'disease', subset.ident = i)
-  asdf <- asdf[1]
-  colnames(asdf) <- i
-  mt_fc <- cbind(mt_fc, asdf)
+  fc_gene <- FoldChange(all, ident.1 = 'disease', feat = mt, group.by = 'disease', subset.ident = i)
+  fc_gene <- fc_gene[1]
+  colnames(fc_gene) <- i
+  mt_fc <- cbind(mt_fc, fc_gene)
 }
 
 
 coq_fc <- FoldChange(all, ident.1 = 'disease', feat = coq, group.by = 'disease', subset.ident = 'PT')
 coq_fc <- coq_fc[0]
 for(i in levels(Idents(all))){
-  asdf <- FoldChange(all, ident.1 = 'disease', feat = coq, group.by = 'disease', subset.ident = i)
-  asdf <- asdf[1]
-  colnames(asdf) <- i
-  coq_fc <- cbind(coq_fc, asdf)
+  fc_gene <- FoldChange(all, ident.1 = 'disease', feat = coq, group.by = 'disease', subset.ident = i)
+  fc_gene <- fc_gene[1]
+  colnames(fc_gene) <- i
+  coq_fc <- cbind(coq_fc, fc_gene)
 }
 
 
 etc_fc <- FoldChange(all, ident.1 = 'disease', feat = etc, group.by = 'disease', subset.ident = 'PT')
 etc_fc <- etc_fc[0]
 for(i in levels(Idents(all))){
-  asdf <- FoldChange(all, ident.1 = 'disease', feat = etc, group.by = 'disease', subset.ident = i)
-  asdf <- asdf[1]
-  colnames(asdf) <- i
-  etc_fc <- cbind(etc_fc, asdf)
+  fc_gene <- FoldChange(all, ident.1 = 'disease', feat = etc, group.by = 'disease', subset.ident = i)
+  fc_gene <- fc_gene[1]
+  colnames(fc_gene) <- i
+  etc_fc <- cbind(etc_fc, fc_gene)
 }
 
 glyco_fc <- FoldChange(all, ident.1 = 'disease', feat = glycolysis, group.by = 'disease', subset.ident = 'PT')
 glyco_fc <- glyco_fc[0]
 for(i in levels(Idents(all))){
-  asdf <- FoldChange(all, ident.1 = 'disease', feat = glycolysis, group.by = 'disease', subset.ident = i)
-  asdf <- asdf[1]
-  colnames(asdf) <- i
-  glyco_fc <- cbind(glyco_fc, asdf)
+  fc_gene <- FoldChange(all, ident.1 = 'disease', feat = glycolysis, group.by = 'disease', subset.ident = i)
+  fc_gene <- fc_gene[1]
+  colnames(fc_gene) <- i
+  glyco_fc <- cbind(glyco_fc, fc_gene)
 }
 
 ComplexHeatmap::Heatmap((coq_fc %>% dplyr::select(-14) %>% as.matrix()), 
                         cluster_rows = FALSE, cluster_columns = FALSE, name = 'Fold Change')
 
 f1 = colorRamp2::colorRamp2(c(-3.5, 0, 3.5), c("blue", "#EEEEEE", "red"))
+
 ComplexHeatmap::Heatmap((mt_fc %>% dplyr::select(-14) %>% as.matrix()), 
                         col = f1, cluster_rows = FALSE, cluster_columns = FALSE, name = 'Fold Change')
 ComplexHeatmap::Heatmap((etc_fc %>% dplyr::select(-14) %>% as.matrix()), cluster_rows = FALSE, cluster_columns = FALSE, name = 'Fold Change')
 
-f1 = colorRamp2::colorRamp2(c(-3.5, 0, 3.5), c("blue", "#EEEEEE", "red"))
 ComplexHeatmap::Heatmap((glyco_fc %>% dplyr::select(-14) %>% as.matrix()), col = f1, 
                         cluster_rows = FALSE, cluster_columns = FALSE, name = 'Fold Change')
 
@@ -197,16 +193,15 @@ kid_dev <- c('PODXL', 'NPHS1', 'NPHS2', 'STAT1', 'PLCE1', 'SYNPO', 'COL6A2', 'FB
 kid_fc <- FoldChange(all, ident.1 = 'disease', feat = kid_dev, group.by = 'disease', subset.ident = 'PT')
 kid_fc <- kid_fc[0]
 for(i in levels(Idents(all))){
-  asdf <- FoldChange(all, ident.1 = 'disease', feat = kid_dev, group.by = 'disease', subset.ident = i)
-  asdf <- asdf[1]
-  colnames(asdf) <- i
-  kid_fc <- cbind(kid_fc, asdf)
+  fc_gene <- FoldChange(all, ident.1 = 'disease', feat = kid_dev, group.by = 'disease', subset.ident = i)
+  fc_gene <- fc_gene[1]
+  colnames(fc_gene) <- i
+  kid_fc <- cbind(kid_fc, fc_gene)
 }
 ComplexHeatmap::Heatmap((kid_fc %>% select(-14) %>% as.matrix()), 
                         cluster_rows = FALSE, cluster_columns = FALSE,  col = f1,
                         name = 'Fold Change')
 
-pacman::p_load(fgsea, msigdbr, ggsci)
 
 podo_gene <- podo_deg$avg_log2FC
 names(podo_gene) <- rownames(podo_deg)
@@ -227,16 +222,4 @@ ggplot(gsea_H %>% slice(1:7, (nrow(gsea_H)-6):nrow(gsea_H)), aes(reorder(pathway
   geom_col(fill = pal_nejm(alpha = 0.8)(2)[2]) +
   coord_flip()+ xlab('')+
   theme_minimal()
-# donut chart
-
-all$ident1 <- recode(Idents(all),
-                             B = 'Imm',
-                             Neutrophil = 'Imm',
-                             'CD4+T' = 'Imm',
-                             'KRM'= 'Imm',
-                             'CD8+T' = 'Imm',
-                             'gEC' = 'EC',
-                             'ptEC' = 'EC',
-                             'Arterial EC' = 'EC'
-)
 
