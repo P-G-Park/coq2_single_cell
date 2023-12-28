@@ -3,6 +3,7 @@ pacman::p_load(tidyverse, readxl, Seurat, data.table, ggsci, ggpubr, Matrix, har
 
 setwd('..')
 
+load('./raw_data/young_1.Rdata') # control 1 - 8 from KPMP
 
 Matrix_disease <- Read10X('./raw_data/81230608')
 seurat_disease <- CreateSeuratObject(Matrix_disease, min.cells = 3)
