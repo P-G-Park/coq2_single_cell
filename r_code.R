@@ -29,9 +29,6 @@ all <- all %>%
   FindClusters(resolution = 0.4)
 
 # save(all, file = './raw_data/all_v1.RData')
-
-
-##### 
 # load('./raw_data/all_v1.RData')
 
 all <-  all %>% RenameIdents(
@@ -77,7 +74,10 @@ DotPlot(all, features = rev(Marker)) +
   coord_flip() & NoLegend()
 
 
+# number of DEGs among clusters
+
 degs <- tibble('Type' = character(),'Control' = integer(), 'Disease' = integer())
+
 for(i in levels(Idents(all))){
   obj <- subset(all, idents = i)
   Idents(obj) <- obj$disease
@@ -89,6 +89,7 @@ for(i in levels(Idents(all))){
 }
 degs %>% write.table("clipboard", sep = '\t') 
 
+# DEGs list between disease and control
 
 DEGs <- list()
 for(i in levels(Idents(all))){
@@ -101,6 +102,8 @@ for(i in levels(Idents(all))){
 
 writexl::write_xlsx(DEGs, path = str_c('all_disease.xlsx'))
 
+# cell proportion
+
 cell.prop <- table(Idents(all), all$disease) %>% 
   as.data.frame() %>% pivot_wider(names_from = Var2, values_from = Freq)
 
@@ -112,6 +115,7 @@ tibble(type = c('Control', 'Disease'), Parenchyme = c(6721, 2896), Immune = c(10
   ggpubr::theme_pubr() +
   theme(legend.title = element_blank()) + xlab('') + ylab('Proportion')
 
+# fold change among selected genes
 
 podo <- subset(all, idents = 'PODO')
 Idents(podo) <- podo$disease
@@ -136,6 +140,8 @@ etc <- c(c1, c2, c3, c4, c5)
 glycolysis <- c('ALDOA', 'BPGM', 'ENO1', 'ENO2', 'GAPDH', 'GPI', 'HK1', 'HK2', 
                 'PFKL', 'PFKM', 'PGAM1', 'PGK1', 'PKM', 'TPI1')
 
+kid_dev <- c('PODXL', 'NPHS1', 'NPHS2', 'STAT1', 'PLCE1', 'SYNPO', 'COL6A2', 'FBLN1','FBN1', 
+             'COL5A1')
 
 mt_fc <- FoldChange(all, ident.1 = 'disease', feat = mt, group.by = 'disease', subset.ident = 'PT')
 mt_fc <- mt_fc[0]
@@ -156,7 +162,6 @@ for(i in levels(Idents(all))){
   coq_fc <- cbind(coq_fc, fc_gene)
 }
 
-
 etc_fc <- FoldChange(all, ident.1 = 'disease', feat = etc, group.by = 'disease', subset.ident = 'PT')
 etc_fc <- etc_fc[0]
 for(i in levels(Idents(all))){
@@ -175,21 +180,6 @@ for(i in levels(Idents(all))){
   glyco_fc <- cbind(glyco_fc, fc_gene)
 }
 
-ComplexHeatmap::Heatmap((coq_fc %>% dplyr::select(-14) %>% as.matrix()), 
-                        cluster_rows = FALSE, cluster_columns = FALSE, name = 'Fold Change')
-
-f1 = colorRamp2::colorRamp2(c(-3.5, 0, 3.5), c("blue", "#EEEEEE", "red"))
-
-ComplexHeatmap::Heatmap((mt_fc %>% dplyr::select(-14) %>% as.matrix()), 
-                        col = f1, cluster_rows = FALSE, cluster_columns = FALSE, name = 'Fold Change')
-ComplexHeatmap::Heatmap((etc_fc %>% dplyr::select(-14) %>% as.matrix()), cluster_rows = FALSE, cluster_columns = FALSE, name = 'Fold Change')
-
-ComplexHeatmap::Heatmap((glyco_fc %>% dplyr::select(-14) %>% as.matrix()), col = f1, 
-                        cluster_rows = FALSE, cluster_columns = FALSE, name = 'Fold Change')
-
-
-kid_dev <- c('PODXL', 'NPHS1', 'NPHS2', 'STAT1', 'PLCE1', 'SYNPO', 'COL6A2', 'FBLN1','FBN1', 
-             'COL5A1')
 
 kid_fc <- FoldChange(all, ident.1 = 'disease', feat = kid_dev, group.by = 'disease', subset.ident = 'PT')
 kid_fc <- kid_fc[0]
@@ -199,10 +189,25 @@ for(i in levels(Idents(all))){
   colnames(fc_gene) <- i
   kid_fc <- cbind(kid_fc, fc_gene)
 }
+
+f1 = colorRamp2::colorRamp2(c(-3.5, 0, 3.5), c("blue", "#EEEEEE", "red"))
+
+ComplexHeatmap::Heatmap((coq_fc %>% dplyr::select(-14) %>% as.matrix()), 
+                        cluster_rows = FALSE, cluster_columns = FALSE, name = 'Fold Change')
+
+ComplexHeatmap::Heatmap((mt_fc %>% dplyr::select(-14) %>% as.matrix()), 
+                        col = f1, cluster_rows = FALSE, cluster_columns = FALSE, name = 'Fold Change')
+
+ComplexHeatmap::Heatmap((etc_fc %>% dplyr::select(-14) %>% as.matrix()), cluster_rows = FALSE, cluster_columns = FALSE, name = 'Fold Change')
+
+ComplexHeatmap::Heatmap((glyco_fc %>% dplyr::select(-14) %>% as.matrix()), col = f1, 
+                        cluster_rows = FALSE, cluster_columns = FALSE, name = 'Fold Change')
+
 ComplexHeatmap::Heatmap((kid_fc %>% select(-14) %>% as.matrix()), 
                         cluster_rows = FALSE, cluster_columns = FALSE,  col = f1,
                         name = 'Fold Change')
 
+# GSEA, GO:BP
 
 podo_gene <- podo_deg$avg_log2FC
 names(podo_gene) <- rownames(podo_deg)
